@@ -28,11 +28,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt pytest
 
-      - name: Install LaTeX dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y latexmk texlive-latex-base texlive-latex-recommended texlive-pictures zip
-
       - name: Download upstream source data
         run: make clean download
 
@@ -42,8 +37,11 @@ jobs:
       - name: Run test suite
         run: make test
 
-      - name: Build sample document
-        run: latexmk -pdf -interaction=nonstopmode -halt-on-error test.tex
+      - name: Build LaTeX document
+        uses: xu-cheng/latex-action@4.1.0
+        with:
+          root_file: test.tex
+          docker_image: texlive/texlive:latest
 
       - name: Prepare release bundle
         run: |
