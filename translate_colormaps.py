@@ -12,7 +12,7 @@ ALPHABET = list(''.join(word) for word in
                      for i in range(1, 3)))
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="Translate Scientific Colour Maps into PGFplots .sty files."
     )
@@ -30,20 +30,27 @@ def parse_args():
         help="Directory to write the generated .sty files into "
              "(default: ScientificColourMapsTikz)",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-args = parse_args()
-org_path = Path(args.input)
-tikz_path = Path(args.output)
+def should_generate(colourmap):
+  return (
+      colourmap.is_dir()
+      and colourmap.stem[0] != "+"
+      and colourmap.stem[-1] != "O"
+  )
 
-tikz_path.mkdir(exist_ok=True)
 
-for colourmap in org_path.iterdir():
-  # Skip metadata folders (names starting with "+") and cyclic/omnidirectional
-  # variants (names ending with "O", e.g. bamO, brocO, corkO, romaO, vikO).
-  # Cyclic maps require different PGFplots handling and are excluded intentionally.
-  if colourmap.is_dir() and colourmap.stem[0] != "+" and colourmap.stem[-1] != "O":
+def generate_styles(org_path, tikz_path):
+  tikz_path.mkdir(exist_ok=True)
+
+  for colourmap in sorted(org_path.iterdir(), key=lambda path: path.name):
+    # Skip metadata folders (names starting with "+") and cyclic/omnidirectional
+    # variants (names ending with "O", e.g. bamO, brocO, corkO, romaO, vikO).
+    # Cyclic maps require different PGFplots handling and are excluded intentionally.
+    if not should_generate(colourmap):
+      continue
+
     print(f"Processing {colourmap}...")
 
     tikz_sty = tikz_path.joinpath(colourmap.stem).with_suffix(".sty")
@@ -116,4 +123,13 @@ for colourmap in org_path.iterdir():
         f.write(f"    }}\n")
         f.write(f"  }},\n")
         f.write(f"}}\n\n")
+
+
+def main(argv=None):
+  args = parse_args(argv)
+  generate_styles(Path(args.input), Path(args.output))
+
+
+if __name__ == "__main__":
+  main()
         
