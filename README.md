@@ -105,6 +105,8 @@ Each colormap provides:
 
 Release bundles (generated `.sty` files and preview assets) are published on
 [GitHub Releases](https://github.com/hortulanusT/pgfplotsScientificColormaps/releases).
+Use tags in the format `scm-vX.Y.Z` (for example `scm-v8.0.1`) to trigger
+the release workflow.
 
 ## License
 
