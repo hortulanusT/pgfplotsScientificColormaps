@@ -1,21 +1,48 @@
 #! /usr/bin/python
 
+import argparse
 import itertools
 import numpy as np
 from pathlib import Path
 
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-ALPHABET = list(''.join(word) for word in 
+ALPHABET = list(''.join(word) for word in
              itertools.chain.from_iterable(
-                 itertools.product(ALPHABET, repeat = i)
+                 itertools.product(ALPHABET, repeat=i)
                      for i in range(1, 3)))
 
-org_path = Path("ScientificColourMaps8")
-tikz_path = Path("ScientificColourMapsTikz")
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Translate Scientific Colour Maps into PGFplots .sty files."
+    )
+    parser.add_argument(
+        "--input",
+        default="ScientificColourMaps8",
+        metavar="DIR",
+        help="Path to the extracted ScientificColourMaps directory "
+             "(default: ScientificColourMaps8)",
+    )
+    parser.add_argument(
+        "--output",
+        default="ScientificColourMapsTikz",
+        metavar="DIR",
+        help="Directory to write the generated .sty files into "
+             "(default: ScientificColourMapsTikz)",
+    )
+    return parser.parse_args()
+
+
+args = parse_args()
+org_path = Path(args.input)
+tikz_path = Path(args.output)
 
 tikz_path.mkdir(exist_ok=True)
 
 for colourmap in org_path.iterdir():
+  # Skip metadata folders (names starting with "+") and cyclic/omnidirectional
+  # variants (names ending with "O", e.g. bamO, brocO, corkO, romaO, vikO).
+  # Cyclic maps require different PGFplots handling and are excluded intentionally.
   if colourmap.is_dir() and colourmap.stem[0] != "+" and colourmap.stem[-1] != "O":
     print(f"Processing {colourmap}...")
 
