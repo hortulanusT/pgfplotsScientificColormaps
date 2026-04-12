@@ -1,0 +1,219 @@
+name: Update Upstream Scientific Colour Maps
+"on":
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-upstream:
+    name: Check and prepare upstream update
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
+      - name: Detect latest Zenodo release
+        id: detect
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import urllib.request
+          from pathlib import Path
+
+          parent_doi = "10.5281/zenodo.1243862"
+          url = "https://zenodo.org/api/records?q=parent.id:1243862&size=50"
+
+          with urllib.request.urlopen(url, timeout=30) as resp:
+              payload = json.load(resp)
+
+          hits = payload.get("hits", {}).get("hits", [])
+          if not hits:
+              raise SystemExit("No Zenodo records found for parent DOI 10.5281/zenodo.1243862")
+
+          def version_key(record):
+              version_text = record.get("metadata", {}).get("version", "")
+              nums = [int(n) for n in re.findall(r"\d+", version_text)]
+              while len(nums) < 3:
+                  nums.append(0)
+              return tuple(nums[:3])
+
+          latest = max(hits, key=version_key)
+          metadata = latest.get("metadata", {})
+
+          latest_version = metadata.get("version", "")
+          latest_doi = latest.get("doi") or metadata.get("doi")
+          publication_date = latest.get("metadata", {}).get("publication_date")
+
+          if not latest_version or not latest_doi or not publication_date:
+              raise SystemExit("Latest Zenodo record is missing version/doi/publication_date")
+
+          record_id = latest.get("id")
+          zip_url = f"https://zenodo.org/records/{record_id}/files/ScientificColourMaps8.zip"
+
+          text = Path("translate_colormaps.py").read_text(encoding="utf-8")
+          current_version = re.search(r'SCIENTIFIC_COLOUR_MAPS_VERSION = "([^"]+)"', text).group(1)
+          current_doi = re.search(r'SCIENTIFIC_COLOUR_MAPS_VERSION_DOI = "([^"]+)"', text).group(1)
+
+          update_needed = (latest_version != current_version) or (latest_doi != current_doi)
+
+          year, month, day = publication_date.split("-")
+          date_slash = f"{year}/{month}/{day}"
+          citation_year = year
+
+          output_path = os.environ["GITHUB_OUTPUT"]
+          with open(output_path, "a", encoding="utf-8") as fh:
+              fh.write(f"update_needed={'true' if update_needed else 'false'}\n")
+              fh.write(f"latest_version={latest_version}\n")
+              fh.write(f"latest_doi={latest_doi}\n")
+              fh.write(f"latest_date_iso={publication_date}\n")
+              fh.write(f"latest_date_slash={date_slash}\n")
+              fh.write(f"latest_zip_url={zip_url}\n")
+              fh.write(f"citation_year={citation_year}\n")
+              fh.write(f"parent_doi={parent_doi}\n")
+
+          print(f"Current: version={current_version}, doi={current_doi}")
+          print(f"Latest:  version={latest_version}, doi={latest_doi}, date={publication_date}")
+          print(f"Update needed: {update_needed}")
+          PY
+
+      - name: Stop when no update is needed
+        if: steps.detect.outputs.update_needed != 'true'
+        run: echo "No new upstream release detected."
+
+      - name: Update tracked metadata and download URL
+        if: steps.detect.outputs.update_needed == 'true'
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          latest_version = os.environ["LATEST_VERSION"]
+          latest_doi = os.environ["LATEST_DOI"]
+          latest_date_iso = os.environ["LATEST_DATE_ISO"]
+          latest_date_slash = os.environ["LATEST_DATE_SLASH"]
+          latest_zip_url = os.environ["LATEST_ZIP_URL"]
+          citation_year = os.environ["CITATION_YEAR"]
+
+          translate_path = Path("translate_colormaps.py")
+          makefile_path = Path("Makefile")
+          readme_path = Path("README.md")
+
+          translate_text = translate_path.read_text(encoding="utf-8")
+          translate_text = re.sub(
+              r'SCIENTIFIC_COLOUR_MAPS_VERSION = "[^"]+"',
+              f'SCIENTIFIC_COLOUR_MAPS_VERSION = "{latest_version}"',
+              translate_text,
+          )
+          translate_text = re.sub(
+              r'SCIENTIFIC_COLOUR_MAPS_DATE = "[^"]+"',
+              f'SCIENTIFIC_COLOUR_MAPS_DATE = "{latest_date_slash}"',
+              translate_text,
+          )
+          translate_text = re.sub(
+              r'SCIENTIFIC_COLOUR_MAPS_VERSION_DOI = "[^"]+"',
+              f'SCIENTIFIC_COLOUR_MAPS_VERSION_DOI = "{latest_doi}"',
+              translate_text,
+          )
+          translate_path.write_text(translate_text, encoding="utf-8")
+
+          makefile_text = makefile_path.read_text(encoding="utf-8")
+          makefile_text = re.sub(
+              r'^ZENODO_URL\s*:=\s*.*$',
+              f'ZENODO_URL  := {latest_zip_url}',
+              makefile_text,
+              flags=re.MULTILINE,
+          )
+          makefile_path.write_text(makefile_text, encoding="utf-8")
+
+          readme_text = readme_path.read_text(encoding="utf-8")
+          readme_text = re.sub(
+              r'\| Scientific Colour Maps \| [^|]+ \| [^|]+ \|',
+              f'| Scientific Colour Maps | {latest_version} | {latest_date_iso} |',
+              readme_text,
+          )
+          readme_text = re.sub(
+              r'\| Zenodo DOI \| \[10\.5281/zenodo\.[0-9]+\]\(https://doi\.org/10\.5281/zenodo\.[0-9]+\) \| \|',
+              f'| Zenodo DOI | [{latest_doi}](https://doi.org/{latest_doi}) | |',
+              readme_text,
+          )
+          readme_text = re.sub(
+              r'> Crameri, F\. \([0-9]{4}\)\. Scientific colour maps \([^)]+\)\. Zenodo\.',
+              f'> Crameri, F. ({citation_year}). Scientific colour maps ({latest_version}). Zenodo.',
+              readme_text,
+          )
+          readme_text = re.sub(
+              r'> https://doi\.org/10\.5281/zenodo\.[0-9]+',
+              f'> https://doi.org/{latest_doi}',
+              readme_text,
+          )
+          readme_path.write_text(readme_text, encoding="utf-8")
+          PY
+        env:
+          LATEST_VERSION: ${{ steps.detect.outputs.latest_version }}
+          LATEST_DOI: ${{ steps.detect.outputs.latest_doi }}
+          LATEST_DATE_ISO: ${{ steps.detect.outputs.latest_date_iso }}
+          LATEST_DATE_SLASH: ${{ steps.detect.outputs.latest_date_slash }}
+          LATEST_ZIP_URL: ${{ steps.detect.outputs.latest_zip_url }}
+          CITATION_YEAR: ${{ steps.detect.outputs.citation_year }}
+
+      - name: Install dependencies for regeneration and checks
+        if: steps.detect.outputs.update_needed == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest
+          sudo apt-get update
+          sudo apt-get install -y latexmk poppler-utils texlive-latex-base texlive-latex-recommended texlive-pictures
+
+      - name: Regenerate assets and run checks
+        if: steps.detect.outputs.update_needed == 'true'
+        run: |
+          make clean download
+          make generate
+          make test
+          make preview-images
+
+      - name: Suggest next tag
+        if: steps.detect.outputs.update_needed == 'true'
+        id: tag
+        run: |
+          suggested_tag="scm-v${{ steps.detect.outputs.latest_version }}"
+          echo "suggested_tag=$suggested_tag" >> "$GITHUB_OUTPUT"
+          echo "Suggested next tag: $suggested_tag"
+
+      - name: Create pull request for upstream update
+        if: steps.detect.outputs.update_needed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: bot/update-scientific-colour-maps-${{ steps.detect.outputs.latest_version }}
+          delete-branch: true
+          commit-message: "Update Scientific Colour Maps to ${{ steps.detect.outputs.latest_version }}"
+          title: "Update Scientific Colour Maps to ${{ steps.detect.outputs.latest_version }}"
+          body: |
+            Automated upstream update detected.
+
+            - Upstream version: `${{ steps.detect.outputs.latest_version }}`
+            - Upstream DOI: `${{ steps.detect.outputs.latest_doi }}`
+            - Upstream release date: `${{ steps.detect.outputs.latest_date_iso }}`
+            - Parent DOI: `${{ steps.detect.outputs.parent_doi }}`
+            - Suggested next repository tag: `${{ steps.tag.outputs.suggested_tag }}`
+
+            This PR updates metadata constants, download URL, generated `.sty` files,
+            tests, and preview images.
+          labels: |
+            automation
+            upstream-update

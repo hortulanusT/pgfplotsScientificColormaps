@@ -1,31 +1,77 @@
 #! /usr/bin/python
 
+import argparse
 import itertools
 import numpy as np
 from pathlib import Path
 
+SCIENTIFIC_COLOUR_MAPS_VERSION = "8.0.1"
+SCIENTIFIC_COLOUR_MAPS_DATE = "2023/10/05"
+SCIENTIFIC_COLOUR_MAPS_VERSION_DOI = "10.5281/zenodo.8409685"
+SCIENTIFIC_COLOUR_MAPS_PARENT_DOI = "10.5281/zenodo.1243862"
+
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-ALPHABET = list(''.join(word) for word in 
+ALPHABET = list(''.join(word) for word in
              itertools.chain.from_iterable(
-                 itertools.product(ALPHABET, repeat = i)
+                 itertools.product(ALPHABET, repeat=i)
                      for i in range(1, 3)))
 
-org_path = Path("ScientificColourMaps8")
-tikz_path = Path("ScientificColourMapsTikz")
 
-tikz_path.mkdir(exist_ok=True)
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Translate Scientific Colour Maps into PGFplots .sty files."
+    )
+    parser.add_argument(
+        "--input",
+        default="ScientificColourMaps8",
+        metavar="DIR",
+        help="Path to the extracted ScientificColourMaps directory "
+             "(default: ScientificColourMaps8)",
+    )
+    parser.add_argument(
+        "--output",
+        default="ScientificColourMapsTikz",
+        metavar="DIR",
+        help="Directory to write the generated .sty files into "
+             "(default: ScientificColourMapsTikz)",
+    )
+    return parser.parse_args(argv)
 
-for colourmap in org_path.iterdir():
-  if colourmap.is_dir() and colourmap.stem[0] != "+" and colourmap.stem[-1] != "O":
+
+def should_generate(colourmap):
+  return (
+      colourmap.is_dir()
+      and colourmap.stem[0] != "+"
+      and colourmap.stem[-1] != "O"
+  )
+
+
+def generate_styles(org_path, tikz_path):
+  tikz_path.mkdir(exist_ok=True)
+
+  for colourmap in sorted(org_path.iterdir(), key=lambda path: path.name):
+    # Skip metadata folders (names starting with "+") and cyclic/omnidirectional
+    # variants (names ending with "O", e.g. bamO, brocO, corkO, romaO, vikO).
+    # Cyclic maps require different PGFplots handling and are excluded intentionally.
+    if not should_generate(colourmap):
+      continue
+
     print(f"Processing {colourmap}...")
 
     tikz_sty = tikz_path.joinpath(colourmap.stem).with_suffix(".sty")
 
     with open(tikz_sty, "w") as f:
-      f.write(f"% Generated from https://doi.org/10.5281/zenodo.1243862\n")
+      f.write(
+          f"% Generated from Scientific Colour Maps {SCIENTIFIC_COLOUR_MAPS_VERSION} "
+          f"(https://doi.org/{SCIENTIFIC_COLOUR_MAPS_VERSION_DOI})\n"
+      )
+      f.write(f"% Parent DOI: https://doi.org/{SCIENTIFIC_COLOUR_MAPS_PARENT_DOI}\n")
       f.write(f"% All credit for creating the colormaps to Fabio Crameri\n")
 
-      f.write(f"\\ProvidesPackage{{{tikz_sty.stem}}}\n\n")
+      f.write(
+          f"\\ProvidesPackage{{{tikz_sty.stem}}}"
+          f"[{SCIENTIFIC_COLOUR_MAPS_DATE} Scientific Colour Maps {SCIENTIFIC_COLOUR_MAPS_VERSION}]\n\n"
+      )
 
       f.write(f"\\RequirePackage{{xcolor}}\n")
       f.write(f"\\RequirePackage{{pgfplots}}\n\n")
@@ -89,4 +135,13 @@ for colourmap in org_path.iterdir():
         f.write(f"    }}\n")
         f.write(f"  }},\n")
         f.write(f"}}\n\n")
+
+
+def main(argv=None):
+  args = parse_args(argv)
+  generate_styles(Path(args.input), Path(args.output))
+
+
+if __name__ == "__main__":
+  main()
         
