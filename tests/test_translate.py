@@ -57,7 +57,20 @@ def test_generated_styles_match_discrete_variants_in_source(tmp_path):
         content = style_file.read_text(encoding="utf-8")
 
         assert style_file.stat().st_size > 0
-        assert f"\\ProvidesPackage{{{colourmap}}}" in content
+        assert (
+            f"% Generated from Scientific Colour Maps "
+            f"{translate_colormaps.SCIENTIFIC_COLOUR_MAPS_VERSION} "
+            f"(https://doi.org/{translate_colormaps.SCIENTIFIC_COLOUR_MAPS_VERSION_DOI})"
+        ) in content
+        assert (
+            f"% Parent DOI: https://doi.org/"
+            f"{translate_colormaps.SCIENTIFIC_COLOUR_MAPS_PARENT_DOI}"
+        ) in content
+        assert (
+            f"\\ProvidesPackage{{{colourmap}}}"
+            f"[{translate_colormaps.SCIENTIFIC_COLOUR_MAPS_DATE} "
+            f"Scientific Colour Maps {translate_colormaps.SCIENTIFIC_COLOUR_MAPS_VERSION}]"
+        ) in content
         assert "\\RequirePackage{xcolor}" in content
         assert "\\RequirePackage{pgfplots}" in content
         assert f"/pgfplots/colormap = {{{colourmap}}}" in content

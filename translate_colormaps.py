@@ -5,6 +5,11 @@ import itertools
 import numpy as np
 from pathlib import Path
 
+SCIENTIFIC_COLOUR_MAPS_VERSION = "8.0.1"
+SCIENTIFIC_COLOUR_MAPS_DATE = "2023/10/05"
+SCIENTIFIC_COLOUR_MAPS_VERSION_DOI = "10.5281/zenodo.8409685"
+SCIENTIFIC_COLOUR_MAPS_PARENT_DOI = "10.5281/zenodo.1243862"
+
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 ALPHABET = list(''.join(word) for word in
              itertools.chain.from_iterable(
@@ -56,10 +61,17 @@ def generate_styles(org_path, tikz_path):
     tikz_sty = tikz_path.joinpath(colourmap.stem).with_suffix(".sty")
 
     with open(tikz_sty, "w") as f:
-      f.write(f"% Generated from https://doi.org/10.5281/zenodo.1243862\n")
+      f.write(
+          f"% Generated from Scientific Colour Maps {SCIENTIFIC_COLOUR_MAPS_VERSION} "
+          f"(https://doi.org/{SCIENTIFIC_COLOUR_MAPS_VERSION_DOI})\n"
+      )
+      f.write(f"% Parent DOI: https://doi.org/{SCIENTIFIC_COLOUR_MAPS_PARENT_DOI}\n")
       f.write(f"% All credit for creating the colormaps to Fabio Crameri\n")
 
-      f.write(f"\\ProvidesPackage{{{tikz_sty.stem}}}\n\n")
+      f.write(
+          f"\\ProvidesPackage{{{tikz_sty.stem}}}"
+          f"[{SCIENTIFIC_COLOUR_MAPS_DATE} Scientific Colour Maps {SCIENTIFIC_COLOUR_MAPS_VERSION}]\n\n"
+      )
 
       f.write(f"\\RequirePackage{{xcolor}}\n")
       f.write(f"\\RequirePackage{{pgfplots}}\n\n")

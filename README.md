@@ -45,11 +45,10 @@ the corresponding `.sty` file into `ScientificColourMapsTikz/`.
 ### 3. Install the style files
 
 Copy (or symlink) the generated `.sty` files and `arealegendstyle.sty` into
-your local `texmf` tree, then run `texhash`:
+your local `texmf` tree:
 
 ```bash
 cp ScientificColourMapsTikz/*.sty arealegendstyle.sty ~/texmf/tex/latex/colormaps/
-texhash ~/texmf
 ```
 
 ### 4. Use in LaTeX
@@ -62,6 +61,19 @@ texhash ~/texmf
 
 See `test.tex` for a full working example including surface plots, discrete
 colormaps, line cycle lists, stacked area charts, and grouped bar charts.
+
+## Preview
+
+The images below are generated from separate pages of `test.tex`, which serves
+both as the example document and as the source for these README preview assets.
+
+<p>
+	<img src="docs/test-preview-continuous.png" alt="Continuous colormap example" width="19.5%" />
+	<img src="docs/test-preview-discrete.png" alt="Discrete colormap example" width="19.5%" />
+	<img src="docs/test-preview-line.png" alt="Line cycle list example" width="19.5%" />
+	<img src="docs/test-preview-area.png" alt="Stacked area example" width="19.5%" />
+	<img src="docs/test-preview-bar.png" alt="Grouped bar chart example" width="19.5%" />
+</p>
 
 ## Available colormaps
 
@@ -90,6 +102,9 @@ Each colormap provides:
 | This repository | v1.0.0 | 2026-04-12 |
 | Scientific Colour Maps | 8.0.1 | 2023-10-05 |
 | Zenodo DOI | [10.5281/zenodo.8409685](https://doi.org/10.5281/zenodo.8409685) | |
+
+Release bundles (generated `.sty` files and preview assets) are published on
+[GitHub Releases](https://github.com/hortulanusT/pgfplotsScientificColormaps/releases).
 
 ## License
 

@@ -3,8 +3,9 @@ ZIP_FILE    := ScientificColourMaps8.zip
 SOURCE_DIR  := ScientificColourMaps8
 OUTPUT_DIR  := ScientificColourMapsTikz
 SCRIPT      := translate_colormaps.py
+PREVIEW_DIR := docs
 
-.PHONY: all download generate test clean
+.PHONY: all download generate test preview-images clean
 
 all: download generate
 
@@ -24,6 +25,18 @@ generate: $(SOURCE_DIR)
 ## Run the Python test suite
 test:
 	pytest tests/ -v
+
+## Build test.pdf and regenerate all README preview images from test.tex
+preview-images: test.pdf
+	mkdir -p $(PREVIEW_DIR)
+	pdftoppm -png -singlefile -f 1 -l 1 -scale-to 1800 test.pdf $(PREVIEW_DIR)/test-preview-continuous
+	pdftoppm -png -singlefile -f 2 -l 2 -scale-to 1800 test.pdf $(PREVIEW_DIR)/test-preview-discrete
+	pdftoppm -png -singlefile -f 3 -l 3 -scale-to 1800 test.pdf $(PREVIEW_DIR)/test-preview-line
+	pdftoppm -png -singlefile -f 4 -l 4 -scale-to 1800 test.pdf $(PREVIEW_DIR)/test-preview-area
+	pdftoppm -png -singlefile -f 5 -l 5 -scale-to 1800 test.pdf $(PREVIEW_DIR)/test-preview-bar
+
+test.pdf: test.tex
+	latexmk -pdf -interaction=nonstopmode -halt-on-error test.tex
 
 ## Remove downloaded source data and zip (generated .sty files are kept)
 clean:
