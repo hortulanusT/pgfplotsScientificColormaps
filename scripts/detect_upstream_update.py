@@ -29,6 +29,9 @@ def main():
     if not latest_version or not latest_doi or not publication_date:
         raise SystemExit("Latest Zenodo record is missing version/doi/publication_date")
 
+    if not re.match(r'^\d+(\.\d+)*$', latest_version):
+        raise SystemExit(f"Unexpected version format: {latest_version!r}")
+
     record_id = record.get("id")
     major_version = latest_version.split(".")[0]
     zip_filename = f"ScientificColourMaps{major_version}.zip"
@@ -36,8 +39,12 @@ def main():
     zip_url = f"https://zenodo.org/records/{record_id}/files/{zip_filename}"
 
     text = Path("translate_colormaps.py").read_text(encoding="utf-8")
-    current_version = re.search(r'SCIENTIFIC_COLOUR_MAPS_VERSION = "([^"]+)"', text).group(1)
-    current_doi = re.search(r'SCIENTIFIC_COLOUR_MAPS_VERSION_DOI = "([^"]+)"', text).group(1)
+    match_version = re.search(r'SCIENTIFIC_COLOUR_MAPS_VERSION = "([^"]+)"', text)
+    match_doi = re.search(r'SCIENTIFIC_COLOUR_MAPS_VERSION_DOI = "([^"]+)"', text)
+    if not match_version or not match_doi:
+        raise SystemExit("Could not parse current version/doi from translate_colormaps.py")
+    current_version = match_version.group(1)
+    current_doi = match_doi.group(1)
 
     update_needed = (latest_version != current_version) or (latest_doi != current_doi)
 
